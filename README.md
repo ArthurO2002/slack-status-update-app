@@ -1,8 +1,19 @@
 # slack-status-update-app
 
-create .env in base
-in that file add firebase sdk
-then
+slack-status-update-app
 
-`firebase functions:config:set fire.sdk="$(cat .env)"`
-`firebase functions:config:set slack.token="BOT_xoxb_TOKEN_HERE"`
+## Installation
+
+Used npm.
+
+```bash
+npm i
+```
+
+## Usage
+create .env in base
+in that file add firebase SDK
+```python
+firebase functions:config:set fire.sdk="$(cat .env)"
+firebase functions:config:set slack.token="BOT_xoxb_TOKEN_HERE"
+```
