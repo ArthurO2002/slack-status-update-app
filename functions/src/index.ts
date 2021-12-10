@@ -111,7 +111,6 @@ export const myBot = functions.https.onRequest( async (req, res) => {
       data[fieldName] = body.state.values[el][fieldName].value;
     });
     data.username = body.user.name;
-    console.log(data);
     const messageInfo = {
       channel: body.container.channel_id,
     };
@@ -124,11 +123,10 @@ export const myBot = functions.https.onRequest( async (req, res) => {
           "delete_original": "true",
         },
       });
-      const lastMessage = await client.chat.postMessage({
+      await client.chat.postMessage({
         channel: messageInfo.channel,
-        text: `${data.username} has written his status update`,
+        text: `<@${body.user.id}> has written his status update`,
       });
-      console.log(lastMessage);
     } catch (err) {
       console.log(err);
       return;
