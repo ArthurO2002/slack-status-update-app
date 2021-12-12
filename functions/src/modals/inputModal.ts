@@ -19,17 +19,19 @@ export default {
     {
       "type": "input",
       "element": {
-        "initial_value": new Date().toISOString().slice(0, 10),
-        "type": "plain_text_input",
-        "action_id": "date",
+        "type": "datepicker",
+        "initial_date": new Date().toISOString().slice(0, 10),
         "placeholder": {
           "type": "plain_text",
-          "text": "Please insert date",
+          "text": "Select a date",
+          "emoji": true,
         },
+        "action_id": "date",
       },
       "label": {
         "type": "plain_text",
         "text": "Date",
+        "emoji": true,
       },
     },
     {

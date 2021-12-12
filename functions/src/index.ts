@@ -14,6 +14,12 @@ initializeApp({
 });
 const database = firestore();
 type IData = Record<string, string>
+interface IFinalData {
+  username:string,
+  date: Date,
+  todayWork: string,
+  yesterdayWork: string
+}
 const collectionName = "slack-status-update";
 export const myBot = functions.https.onRequest( async (req, res) => {
   if (req.body.command === "/make-status-update") {
@@ -31,14 +37,26 @@ export const myBot = functions.https.onRequest( async (req, res) => {
     };
     keys.forEach((el:string) => {
       const fieldName = Object.keys(body.state.values[el])[0];
-      data[fieldName] = body.state.values[el][fieldName].value;
+      if (body.state.values[el][fieldName].value) {
+        (data)[fieldName] = body.state.values[el][fieldName].value;
+      } else {
+        data[fieldName] = body.state.values[el][fieldName].selected_date;
+      }
     });
+    console.log(data);
     data.username = body.user.name;
     const messageInfo = {
       channel: body.container.channel_id,
     };
+    const finalData: IFinalData = {
+      username: data.username,
+      date: new Date(data.date),
+      todayWork: data.todayWork,
+      yesterdayWork: data.yesterdayWork,
+    };
+    console.log(finalData);
     try {
-      await database.collection(collectionName).add(data);
+      await database.collection(collectionName).add(finalData);
       await axios({
         method: "post",
         url: body.response_url,
