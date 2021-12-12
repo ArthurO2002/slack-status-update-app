@@ -3,6 +3,7 @@ import * as functions from "firebase-functions";
 import {firestore, initializeApp, credential} from "firebase-admin";
 import {WebClient, LogLevel} from "@slack/web-api";
 import inputModal from "./modals/inputModal";
+import {createSuccessMessage} from "./modals/successMessage";
 import axios from "axios";
 const config = functions.config();
 const serviceAcc = config.fire.sdk;
@@ -93,8 +94,20 @@ export const myBot = functions.https.onRequest( async (req, res) => {
           "delete_original": "true",
         },
       });
+      const successMessage = createSuccessMessage(
+          body.user.id,
+          finalData.todayWork,
+          finalData.yesterdayWork,
+          data.date
+      );
+      console.log(successMessage);
       await client.chat.postMessage({
         channel: messageInfo.channel,
+        text: `<@${body.user.id}> has written his status update`,
+      });
+      await client.chat.postMessage({
+        channel: messageInfo.channel,
+        blocks: successMessage,
         text: `<@${body.user.id}> has written his status update`,
       });
     } catch (err) {
