@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import * as functions from "firebase-functions";
 import {firestore, initializeApp, credential} from "firebase-admin";
 import {WebClient, LogLevel} from "@slack/web-api";
@@ -20,6 +21,34 @@ interface IFinalData {
   todayWork: string,
   yesterdayWork: string
 }
+interface IState {
+  values: {
+    [key:string]: {
+      [key:string]: {
+        value: string,
+        selected_date: string
+      }
+    }
+  }
+}
+interface IUser {
+  username: string,
+  name: string,
+  id: string,
+  team_id: string
+}
+interface IContainer {
+  channel_id: string
+  is_ephemeral: boolean
+  message_ts: string
+  type: string
+}
+interface IBody {
+  state: IState,
+  response_url: string,
+  user: IUser,
+  container: IContainer
+}
 const collectionName = "slack-status-update";
 export const myBot = functions.https.onRequest( async (req, res) => {
   if (req.body.command === "/make-status-update") {
@@ -27,7 +56,7 @@ export const myBot = functions.https.onRequest( async (req, res) => {
     res.send(modal);
     res.status(200);
   } else {
-    const body = JSON.parse(req.body.payload);
+    const body: IBody = JSON.parse(req.body.payload);
     const keys = Object.keys(body.state.values);
     const data: IData = {
       username: "someOne",
