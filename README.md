@@ -15,5 +15,6 @@ create .env in base
 in that file add firebase SDK
 ```python
 firebase functions:config:set fire.sdk="$(cat .env)"
+firebase functions:config:set slack.verification="slack_app_verification_token"
 firebase functions:config:set slack.token="BOT_xoxb_TOKEN_HERE"
 ```
