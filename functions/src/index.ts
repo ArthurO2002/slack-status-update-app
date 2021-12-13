@@ -121,7 +121,7 @@ export const myBot = functions.https.onRequest( async (req, res) => {
         if (value.error) {
           await client.chat.postMessage({
             channel: messageInfo.channel,
-            text: `Hey <@${body.user.id}> Please write down all fields}`,
+            text: `Hey <@${body.user.id}> Please write down all fields`,
           });
           res.status(400);
           console.log(value.error.details[0].message);
