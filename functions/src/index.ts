@@ -79,6 +79,7 @@ export const myBot = functions.https.onRequest( async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(400);
+    res.send("not parsable object");
     throw new Error("not parsable object");
   }
   if (body.actions[0].action_id === "add_option") {
@@ -122,6 +123,8 @@ export const myBot = functions.https.onRequest( async (req, res) => {
             channel: messageInfo.channel,
             text: `Hey <@${body.user.id}> ${value.error.details[0].message}`,
           });
+          res.status(400);
+          res.send(value.error.details[0].message);
           return;
         }
         await database.collection(collectionName).add(finalData);
@@ -142,12 +145,14 @@ export const myBot = functions.https.onRequest( async (req, res) => {
         });
       } catch (err) {
         res.status(400);
+        res.send(err);
         console.log(err);
         throw new Error(err);
       }
       res.send("success");
       res.status(200);
     } else {
+      res.send("Tokens don't match");
       res.status(403);
       throw new Error("Tokens don't match");
     }
