@@ -1,9 +1,9 @@
 /* eslint-disable camelcase */
-/* eslint-disable max-len */
 import * as functions from "firebase-functions";
 import {firestore, initializeApp, credential} from "firebase-admin";
 import {WebClient, LogLevel} from "@slack/web-api";
 import inputModal from "./modals/inputModal";
+import messages from "./messages/messages";
 import {createSuccessMessage} from "./modals/successMessage";
 import axios from "axios";
 import Joi from "joi";
@@ -19,18 +19,9 @@ initializeApp({
 const database = firestore();
 const schema = Joi.object({
   username: Joi.string(),
-  todayWork: Joi.string().required().messages({
-    "string.required": "Today's work field is required",
-    "string.min": "Today's work need's at least 1 character",
-  }),
-  yesterdayWork: Joi.string().required().messages({
-    "string.required": "Yesterday's work field is required",
-    "string.min": "Yesterday's work need's at least 1 character",
-  }),
-  date: Joi.date().min(new Date(2010, 1, 1)).required().messages({
-    "date.required": "Date field can't be empty",
-    "date.min": "Date field Should not be empty or older than 2010-01-01",
-  }),
+  todayWork: Joi.string().required().messages(messages.today),
+  yesterdayWork: Joi.string().required().messages(messages.yesterday),
+  date: Joi.date().min(new Date(2010, 1, 1)).required().messages(messages.date),
 });
 type IData = Record<string, string>
 interface IFinalData {
@@ -64,7 +55,7 @@ interface IContainer {
 interface IActions {
   action_id: string,
   action_ts: string,
-  type:string
+  type: string
 }
 interface IBody {
   state: IState,
@@ -82,7 +73,14 @@ export const myBot = functions.https.onRequest( async (req, res) => {
     res.status(200);
     return;
   }
-  const body: IBody = JSON.parse(req.body.payload);
+  let body: IBody;
+  try {
+    body = JSON.parse(req.body.payload);
+  } catch (err) {
+    console.log(err);
+    res.status(400);
+    throw new Error("not parsable object");
+  }
   if (body.actions[0].action_id === "add_option") {
     if (body.token === config.slack.verification) {
       const keys = Object.keys(body.state.values);
@@ -111,7 +109,6 @@ export const myBot = functions.https.onRequest( async (req, res) => {
         yesterdayWork: data.yesterdayWork,
       };
       const value = schema.validate(finalData);
-      console.log(JSON.stringify(value));
       try {
         await axios({
           method: "post",
@@ -144,14 +141,15 @@ export const myBot = functions.https.onRequest( async (req, res) => {
           text: `<@${body.user.id}> has written his status update`,
         });
       } catch (err) {
+        res.status(400);
         console.log(err);
-        return;
+        throw new Error(err);
       }
       res.send("success");
       res.status(200);
     } else {
-      console.log("Tokens don't match");
-      return;
+      res.status(403);
+      throw new Error("Tokens don't match");
     }
   }
 });
