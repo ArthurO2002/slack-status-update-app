@@ -79,7 +79,7 @@ export const myBot = functions.https.onRequest( async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(400);
-    res.send("not parsable object");
+    res.send("Unable to parse the payload");
     return;
   }
   if (body.actions[0].action_id === "add_option") {
