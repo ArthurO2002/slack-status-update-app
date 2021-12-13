@@ -1,10 +1,12 @@
 /* eslint-disable camelcase */
+/* eslint-disable max-len */
 import * as functions from "firebase-functions";
 import {firestore, initializeApp, credential} from "firebase-admin";
 import {WebClient, LogLevel} from "@slack/web-api";
 import inputModal from "./modals/inputModal";
 import {createSuccessMessage} from "./modals/successMessage";
 import axios from "axios";
+import Joi from "joi";
 const config = functions.config();
 const serviceAcc = config.fire.sdk;
 const client = new WebClient(config.slack.token, {
@@ -15,6 +17,21 @@ initializeApp({
   credential: credential.cert(serviceAcc),
 });
 const database = firestore();
+const schema = Joi.object({
+  username: Joi.string(),
+  todayWork: Joi.string().required().messages({
+    "string.required": "Today's work field is required",
+    "string.min": "Today's work need's at least 1 character",
+  }),
+  yesterdayWork: Joi.string().required().messages({
+    "string.required": "Yesterday's work field is required",
+    "string.min": "Yesterday's work need's at least 1 character",
+  }),
+  date: Joi.date().min(new Date(2010, 1, 1)).required().messages({
+    "date.required": "Date field can't be empty",
+    "date.min": "Date field Should not be empty or older than 2010-01-01",
+  }),
+});
 type IData = Record<string, string>
 interface IFinalData {
   username:string,
@@ -44,12 +61,18 @@ interface IContainer {
   message_ts: string
   type: string
 }
+interface IActions {
+  action_id: string,
+  action_ts: string,
+  type:string
+}
 interface IBody {
   state: IState,
   response_url: string,
   user: IUser,
   container: IContainer,
   token: string
+  actions: IActions[]
 }
 const collectionName = "slack-status-update";
 export const myBot = functions.https.onRequest( async (req, res) => {
@@ -57,9 +80,10 @@ export const myBot = functions.https.onRequest( async (req, res) => {
     const modal = inputModal;
     res.send(modal);
     res.status(200);
-  } else {
-    const body: IBody = JSON.parse(req.body.payload);
-    console.log(body.token, config.slack.verification);
+    return;
+  }
+  const body: IBody = JSON.parse(req.body.payload);
+  if (body.actions[0].action_id === "add_option") {
     if (body.token === config.slack.verification) {
       const keys = Object.keys(body.state.values);
       const data: IData = {
@@ -76,7 +100,6 @@ export const myBot = functions.https.onRequest( async (req, res) => {
           data[fieldName] = body.state.values[el][fieldName].selected_date;
         }
       });
-      console.log(data);
       data.username = body.user.name;
       const messageInfo = {
         channel: body.container.channel_id,
@@ -87,9 +110,9 @@ export const myBot = functions.https.onRequest( async (req, res) => {
         todayWork: data.todayWork,
         yesterdayWork: data.yesterdayWork,
       };
-      console.log(finalData);
+      const value = schema.validate(finalData);
+      console.log(JSON.stringify(value));
       try {
-        await database.collection(collectionName).add(finalData);
         await axios({
           method: "post",
           url: body.response_url,
@@ -97,13 +120,20 @@ export const myBot = functions.https.onRequest( async (req, res) => {
             "delete_original": "true",
           },
         });
+        if (value.error) {
+          await client.chat.postMessage({
+            channel: messageInfo.channel,
+            text: `Hey <@${body.user.id}> ${value.error.details[0].message}`,
+          });
+          return;
+        }
+        await database.collection(collectionName).add(finalData);
         const successMessage = createSuccessMessage(
             body.user.id,
             finalData.todayWork,
             finalData.yesterdayWork,
             data.date
         );
-        console.log(successMessage);
         await client.chat.postMessage({
           channel: messageInfo.channel,
           text: `<@${body.user.id}> has written his status update`,
@@ -121,6 +151,7 @@ export const myBot = functions.https.onRequest( async (req, res) => {
       res.status(200);
     } else {
       console.log("Tokens don't match");
+      return;
     }
   }
 });
