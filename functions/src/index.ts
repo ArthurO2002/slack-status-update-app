@@ -153,8 +153,8 @@ export const myBot = functions.https.onRequest( async (req, res) => {
       res.send("success");
       res.status(200);
     } else {
-      res.send("Tokens don't match");
-      console.log("Tokens don't match");
+      res.send("Access denied");
+      console.log("Access denied");
       res.status(403);
       return;
     }
