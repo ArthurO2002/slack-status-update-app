@@ -4,7 +4,7 @@ export const createSuccessMessage = (
     yesterdayWork:string,
     date:string
 ) => {
-  const modal =[
+  return [
     {
       "type": "header",
       "text": {
@@ -41,5 +41,4 @@ export const createSuccessMessage = (
       ],
     },
   ];
-  return modal;
 };

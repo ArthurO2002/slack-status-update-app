@@ -18,7 +18,7 @@ initializeApp({
 });
 const database = firestore();
 const collectionName = "slack-status-update";
-export const myBot = functions.https.onRequest( async (req, res) => {
+functions.https.onRequest( async (req, res) => {
   if (req.body.command === "/make-status-update") {
     const modal = inputModal;
     res.send(modal);
