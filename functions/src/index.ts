@@ -3,10 +3,11 @@ import * as functions from "firebase-functions";
 import {firestore, initializeApp, credential} from "firebase-admin";
 import {WebClient, LogLevel} from "@slack/web-api";
 import inputModal from "./modals/inputModal";
-import messages from "./messages/messages";
+import {IBody} from "./models";
+import {service} from "./service";
 import {createSuccessMessage} from "./modals/successMessage";
 import axios from "axios";
-import Joi from "joi";
+import {schema} from "./validators";
 const config = functions.config();
 const serviceAcc = config.fire.sdk;
 const client = new WebClient(config.slack.token, {
@@ -17,54 +18,6 @@ initializeApp({
   credential: credential.cert(serviceAcc),
 });
 const database = firestore();
-const schema = Joi.object({
-  username: Joi.string(),
-  todayWork: Joi.string().required().messages(messages.today),
-  yesterdayWork: Joi.string().required().messages(messages.yesterday),
-  date: Joi.date().min(new Date(2010, 1, 1)).required().messages(messages.date),
-});
-type IData = Record<string, string>
-interface IFinalData {
-  username:string,
-  date: Date,
-  todayWork: string,
-  yesterdayWork: string
-}
-interface IState {
-  values: {
-    [key:string]: {
-      [key:string]: {
-        value: string,
-        selected_date: string
-      }
-    }
-  }
-}
-interface IUser {
-  username: string,
-  name: string,
-  id: string,
-  team_id: string
-}
-interface IContainer {
-  channel_id: string
-  is_ephemeral: boolean
-  message_ts: string
-  type: string
-}
-interface IActions {
-  action_id: string,
-  action_ts: string,
-  type: string
-}
-interface IBody {
-  state: IState,
-  response_url: string,
-  user: IUser,
-  container: IContainer,
-  token: string
-  actions: IActions[]
-}
 const collectionName = "slack-status-update";
 export const myBot = functions.https.onRequest( async (req, res) => {
   if (req.body.command === "/make-status-update") {
@@ -84,30 +37,9 @@ export const myBot = functions.https.onRequest( async (req, res) => {
   }
   if (body.actions[0].action_id === "add_option") {
     if (body.token === config.slack.verification) {
-      const keys = Object.keys(body.state.values);
-      const data: IData = {
-        username: "someOne",
-        date: new Date().toISOString().slice(0, 10),
-        todayWork: "something",
-        yesterdayWork: "somethingMore",
-      };
-      keys.forEach((el:string) => {
-        const fieldName = Object.keys(body.state.values[el])[0];
-        if (body.state.values[el][fieldName].value) {
-          (data)[fieldName] = body.state.values[el][fieldName].value;
-        } else {
-          data[fieldName] = body.state.values[el][fieldName].selected_date;
-        }
-      });
-      data.username = body.user.name;
+      const finalData = service.getStatusUpdate(body);
       const messageInfo = {
         channel: body.container.channel_id,
-      };
-      const finalData: IFinalData = {
-        username: data.username,
-        date: new Date(data.date),
-        todayWork: data.todayWork,
-        yesterdayWork: data.yesterdayWork,
       };
       const value = schema.validate(finalData);
       try {
@@ -133,7 +65,7 @@ export const myBot = functions.https.onRequest( async (req, res) => {
             body.user.id,
             finalData.todayWork,
             finalData.yesterdayWork,
-            data.date
+            new Date(finalData.date).toISOString().slice(0, 10)
         );
         await client.chat.postMessage({
           channel: messageInfo.channel,
