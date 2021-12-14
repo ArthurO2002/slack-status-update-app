@@ -56,8 +56,8 @@ export const myBot = functions.https.onRequest( async (req, res) => {
               text: `Hey <@${body.user.id}> Please write down all fields`,
             });
             res.status(400);
-            console.log(value.error.details[0].message);
-            res.send(value.error.details[0].message);
+            console.log(value.error.details);
+            res.send(value.error.details);
             return;
           }
           await database.collection(collectionName).add(finalData);
