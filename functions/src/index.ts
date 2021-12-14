@@ -35,8 +35,7 @@ export const myBot = functions.https.onRequest( async (req, res) => {
     return;
   }
   for (const el of body.actions) {
-    const index = body.actions.indexOf(el);
-    if (body.actions[index].action_id === "add_option") {
+    if (el.action_id === "add_option") {
       if (body.token === config.slack.verification) {
         const finalData = service.getStatusUpdate(body);
         const messageInfo = {
