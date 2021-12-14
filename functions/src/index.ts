@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 import * as functions from "firebase-functions";
 import {firestore, initializeApp, credential} from "firebase-admin";
 import {WebClient, LogLevel} from "@slack/web-api";
@@ -35,60 +34,62 @@ export const myBot = functions.https.onRequest( async (req, res) => {
     res.send("Unable to parse the payload");
     return;
   }
-  if (body.actions[0].action_id === "add_option") {
-    if (body.token === config.slack.verification) {
-      const finalData = service.getStatusUpdate(body);
-      const messageInfo = {
-        channel: body.container.channel_id,
-      };
-      const value = schema.validate(finalData);
-      try {
-        await axios({
-          method: "post",
-          url: body.response_url,
-          data: {
-            "delete_original": "true",
-          },
-        });
-        if (value.error) {
+  for (const el of body.actions) {
+    const index = body.actions.indexOf(el);
+    if (body.actions[index].action_id === "add_option") {
+      if (body.token === config.slack.verification) {
+        const finalData = service.getStatusUpdate(body);
+        const messageInfo = {
+          channel: body.container.channel_id,
+        };
+        const value = schema.validate(finalData);
+        try {
+          await axios({
+            method: "post",
+            url: body.response_url,
+            data: {
+              "delete_original": "true",
+            },
+          });
+          if (value.error) {
+            await client.chat.postMessage({
+              channel: messageInfo.channel,
+              text: `Hey <@${body.user.id}> Please write down all fields`,
+            });
+            res.status(400);
+            console.log(value.error.details[0].message);
+            res.send(value.error.details[0].message);
+            return;
+          }
+          await database.collection(collectionName).add(finalData);
+          const successMessage = createSuccessMessage(
+              body.user.id,
+              finalData.todayWork,
+              finalData.yesterdayWork,
+              new Date(finalData.date).toISOString().slice(0, 10)
+          );
           await client.chat.postMessage({
             channel: messageInfo.channel,
-            text: `Hey <@${body.user.id}> Please write down all fields`,
+            text: `<@${body.user.id}> has written his status update`,
           });
+          await client.chat.postMessage({
+            channel: messageInfo.channel,
+            blocks: successMessage,
+            text: `<@${body.user.id}> has written his status update`,
+          });
+        } catch (err) {
           res.status(400);
-          console.log(value.error.details[0].message);
-          res.send(value.error.details[0].message);
+          res.send(err);
+          console.log(err);
           return;
         }
-        await database.collection(collectionName).add(finalData);
-        const successMessage = createSuccessMessage(
-            body.user.id,
-            finalData.todayWork,
-            finalData.yesterdayWork,
-            new Date(finalData.date).toISOString().slice(0, 10)
-        );
-        await client.chat.postMessage({
-          channel: messageInfo.channel,
-          text: `<@${body.user.id}> has written his status update`,
-        });
-        await client.chat.postMessage({
-          channel: messageInfo.channel,
-          blocks: successMessage,
-          text: `<@${body.user.id}> has written his status update`,
-        });
-      } catch (err) {
-        res.status(400);
-        res.send(err);
-        console.log(err);
-        return;
+        res.send("success");
+        res.status(200);
+      } else {
+        res.send("Access denied");
+        console.log("Access denied");
+        res.status(403);
       }
-      res.send("success");
-      res.status(200);
-    } else {
-      res.send("Access denied");
-      console.log("Access denied");
-      res.status(403);
-      return;
     }
   }
 });
